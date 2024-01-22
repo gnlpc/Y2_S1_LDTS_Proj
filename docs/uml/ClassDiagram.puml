@@ -1,0 +1,317 @@
+@startuml
+
+class Game {
+  - gui: LanternaGUI
+  -State state
+  +start()
+}
+
+class Constants {
+}
+
+package "States" #DDDDDD {
+    abstract class State {
+        +getController(): Controller<T>
+        +getViewer(): Viewer<T>
+        +step(game, gui, time)
+    }
+
+    class GameState {
+        +getController()
+        +getViewer()
+    }
+
+    class MenuState {
+        +getController()
+        +getViewer()
+    }
+
+    class InstructionsState {
+        +getController()
+        +getViewer()
+    }
+}
+
+package "Domain" #DDDDDD {
+  package "Model" {
+      package "Model.Game" {
+        package "Arena" {
+            class Arena {
+                -int width
+                -int height
+                -Platform platform
+                -List<Wall> walls
+                -List<Brick> bricks
+                -Ball ball
+            }
+
+            abstract class ArenaBuilder{
+                +createArena()
+                +createPlatform()
+                +createWalls()
+                +createBall()
+            }
+
+            class LoaderArenaBuilder{
+                +getWidth()
+                +getHeight()
+                +createWalls()
+                +createBall()
+                +createBricks()
+                +createPlatform()
+            }
+        }
+
+          package "Elements" {
+            class Ball {
+                -int directionX, directionY, brickHits
+                -boolean destroyedBrick
+            }
+
+            class Platform {
+                -double score
+                -int lives, size
+                +updateScore(points)
+                +updateLives()
+                +updateSize()
+            }
+
+            class Brick {
+                -boolean destroyed
+                -int points, hits
+                -String color
+                +updateHits()
+                +getRandomPoints()
+            }
+
+            class Wall {}
+
+            abstract class Element {
+                -Position position
+            }
+          }
+      }
+
+        package "Model.Menu" {
+            class Menu {
+                -List<String> entries
+                -int currentEntry
+                +nextEntry()
+                +previousEntry()
+            }
+        }
+
+    class Position {
+        -int x
+        -int y
+    }
+  }
+}
+
+package "Controller" #DDDDDD {
+    abstract class Controller<T> {
+        -<T> model
+        +step(game, action, time)
+    }
+
+    class InstructionsController {
+        +step(game, action, time)
+    }
+
+    package "Controller.Game" {
+        abstract class GameController {}
+
+        class ArenaController {
+            -BallController ballController
+            -PlatformController platformController
+            -BrickController brickController
+            -List<Brick> bricks
+            -int auxScore
+            +didHitPlatform()
+            +didHitBrick()
+            +lostLife()
+            +dropBooster()
+            +step(game, action, time)
+        }
+
+        class BallController {
+            -Ball ball
+            -long start
+            -ArenaController arenaController
+            +move()
+            +step(game, action, time)
+            +hitWall()
+            +hitUp()
+            +hitBar()
+            +didHitRight()
+            +didHitLeft()
+            +didHitUp()
+            +hitPlatform()
+            +hitBrick()
+            +resetBall()
+            +didHitPlatform()
+        }
+
+        class BrickController {
+            -List<Brick> bricks
+            +getsHit(brick)
+        }
+
+        class PlatformController {
+            -Platform platform
+            +step(game, action, time)
+            +moveLeft()
+            +moveRight()
+            +canPlatformMoveLeft(position)
+            +canPlatformMoveRight(position)
+            +updateScore(points)
+            +updateSize()
+            +lostLife()
+        }
+    }
+
+    package "Controller.Menu"{
+        class MenuController {
+            +step(game, action, time)
+        }
+    }
+}
+
+package "Viewer" #DDDDDD {
+    abstract class Viewer<T> {
+        +draw(GUI)
+        +drawElements(GUI)
+    }
+
+    class InstructionsViewer {
+        +drawElements(GUI)
+    }
+
+    package "Viewer.Game" {
+        interface ElementViewer<T> {
+            +drawElement(element, GUI)
+        }
+
+        class BallViewer {
+            +drawElement(element, GUI)
+        }
+
+        class PlatformViewer {
+            +drawElement(element, GUI)
+        }
+
+        class BrickViewer {
+            +drawElement(element, GUI)
+        }
+
+        class WallViewer {
+            +drawElement(element, GUI)
+        }
+
+        class GameViewer {
+            +drawElements(GUI)
+            +drawElements(GUI, elements, viewer)
+            +drawElement(GUI, element, viewer)
+        }
+    }
+
+    package "Viewer.Menu" {
+        class MenuViewer {
+            +drawElements(GUI)
+        }
+    }
+}
+
+package "GUI" #DDDDDD {
+    interface GUI {}
+
+    class LanternaGUI {
+        - TerminalScreen screen
+    }
+}
+
+Game --> "1" State: has >
+
+State <|- GameState: is a
+State <|-- MenuState: is a
+State <|-- InstructionsState: is a
+State --> "1" Controller: has >
+State --> "1" Viewer: has >
+
+GameState --> "1" Arena: has >
+GameState --> "1" Game: has >
+MenuState -> "1" Menu: has >
+
+Arena --> "1" Platform: has >
+Arena --> "*" Ball: has >
+Arena --> "*" Brick: has >
+Arena --> "*" Wall: has >
+
+ArenaBuilder --> Platform
+ArenaBuilder --> Ball
+ArenaBuilder --> Brick
+ArenaBuilder --> Wall
+
+LoaderArenaBuilder --|> ArenaBuilder: is a
+
+Ball --|> Element: is a
+
+Platform --|> Element: is a
+
+Brick --|> Element: is a
+
+Wall ---|> Element: is a
+
+Element -> "1" Position: has >
+
+Controller <|-- GameController: is a
+Controller <|- MenuController: is a
+Controller <|-- InstructionsController: is a
+
+Viewer <|- GameViewer: is a
+Viewer <|-- MenuViewer: is a
+Viewer <|-- InstructionsViewer: is a
+
+GameViewer ...> ElementViewer
+
+BallViewer ..|> ElementViewer: implements
+
+PlatformViewer ..|> ElementViewer: implements
+
+BrickViewer ..|> ElementViewer: implements
+
+WallViewer ..|> ElementViewer: implements
+
+GUI <|.. LanternaGUI: implements
+
+ArenaController --> "1" GameState: has >
+ArenaController --> "1" Arena: has >
+ArenaController --> "1" BallController: has >
+ArenaController --> "1" BrickController: has >
+ArenaController --> "1" PlatformController: has >
+ArenaController --> "*" Brick: has >
+ArenaController --|> GameController: is a
+
+BallController --> "1" Ball: has >
+BallController --> "1" ArenaController: has >
+BallController --|> GameController: is a
+
+BrickController --> "*" Brick: has
+
+GameController --> "1" Arena: has >
+
+PlatformController --> "1" Platform: has >
+PlatformController --|> GameController: is a
+
+MenuController --> "1" Menu: has >
+MenuController --> LoaderArenaBuilder
+
+Game --> "1" LanternaGUI: has >
+Game --> "1" State: has >
+
+Constants --> Viewer
+Constants --> GUI
+Constants --> Controller
+Constants --> Arena
+
+@enduml
